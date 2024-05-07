@@ -1,6 +1,6 @@
 <p align="center"><img width="90%" align="center" src="https://raw.githubusercontent.com/drkameleon/peregrino.art/master/logo.png"/></p>
 <p align="center">
-     <i>Lightning-fast command-line benchmarking tool & library for Arturo</i> 
+     Lightning-fast command-line<br>benchmarking tool & library for Arturo
      <br><br>
      <img src="https://img.shields.io/github/license/arturo-lang/grafito?style=for-the-badge">
     <img src="https://img.shields.io/badge/language-Arturo-orange.svg?style=for-the-badge">
