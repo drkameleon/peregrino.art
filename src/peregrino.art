@@ -1,0 +1,153 @@
+;===============================================
+; Peregrino.art
+;
+; Lightning-fast command-line 
+; benchmarking tool & library
+; for Arturo
+;
+; MIT License
+; (c) 2024 Yanis Zafirópulos
+;-----------------------------------------------
+; @file src/peregrino.art
+;===============================================
+;; app:         « peregrino
+;; version:     « 0.0.1
+;; description: « Lightning-fast command-line benchmarking tool & library
+;; arguments: [
+;;     command: « A command you want to benchmark
+;; ]
+;==============================================================================
+
+import ./{../../progressive.art/src/progressive.art}!
+
+define :peregrino [
+    init: method [commands][
+        \commands: commands
+        \stats: #[]
+    ]
+
+    showSummary: method [][
+        print color.bold #orange pad.center "▶ ANALYSIS" terminal\width
+        print ""
+        ;print [" " pad.right "Command" 30 "║" pad.center "Average" 15 "║" pad.center "Deviation" 15 "║ Range   ║"]
+        ;print " ╔" ++ (repeat "═" 30+2) ++ "╬" ++ (repeat "═" 15+2) ++ "╬" ++ (repeat "═" 15+2) ++ "╬" ++ "══════════════════════╬═════════╬"
+        avgs: map \stats [k,v]-> to :string .format:".2f" round.to:2 average map v => scalar
+        devs: map \stats [k,v]-> to :string .format:".2f" round.to: 2 deviation.sample map v => scalar
+        mins: map \stats [k,v]-> to :string .format:".2f" round.to:2 scalar min v
+        maxs: map \stats [k,v]-> to :string .format:".2f" round.to:2 scalar max v
+
+        maxAvgS: size maximum avgs => size
+        maxDevS: size maximum devs => size
+        maxMinS: size maximum mins => size
+        maxMaxS: size maximum maxs => size
+
+        maxAvgS: (maxAvgS > 15)? -> maxAvgS -> 15
+        maxDevS: (maxDevS > 15)? -> maxDevS -> 15
+
+        maxRngS: (20 < maxMinS + maxMaxS)? -> maxMinS + maxMaxS -> 20
+
+        commandS: terminal\width - sum @[
+            maxAvgS + 2,
+            maxDevS + 2,
+            maxRngS + 2,
+            2 + 2 + 5
+        ]
+
+        printLine: function [ONE,TWO,THREE,FOUR][
+            isInitial?: not? null? attr 'start
+            initial: (isInitial?)? -> " " -> "║"
+            THIRD: (isInitial?)? -> pad.center THREE maxDevS -> color #gray pad.center THREE maxDevS
+            print [" "++initial pad.right ONE commandS "║" pad.center TWO maxAvgS "║" THIRD "║" pad.center FOUR maxRngS "║"]
+        ]
+
+        print "  " ++ (repeat " " commandS+2) ++ "╔" ++ (repeat "═" maxAvgS+2) ++ "╦" ++ (repeat "═" maxDevS+2) ++ "╦" ++ (repeat "═" maxRngS+2) ++ "╗"
+        printLine.start "Command" "Mean" "Deviation" "Range"
+        print " ╔" ++ (repeat "═" commandS+2) ++ "╬" ++ (repeat "═" maxAvgS+2) ++ "╬" ++ (repeat "═" maxDevS+2) ++ "╬" ++ (repeat "═" maxRngS+2) ++ "╣"
+
+        loop 0..dec size avgs 'i [
+            printLine 
+                \commands\[i] 
+                avgs\[i] 
+                "± " ++ devs\[i] 
+                mins\[i] ++ " .. " ++ maxs\[i]
+            ;print [" ║" pad.right get keys \stats i 30 "║" pad.center avgs\[i] 15 "║" color #gray pad.center "± " ++ devs\[i] 15 "║" pad.right mins\[i] maxMinS ".." pad.right maxs\[i] maxMaxS] 
+        ]
+        print " ╚" ++ (repeat "═" commandS+2) ++ "╩" ++ (repeat "═" maxAvgS+2) ++ "╩" ++ (repeat "═" maxDevS+2) ++ "╩" ++ (repeat "═" maxRngS+2) ++ "╝"
+        ; loop \stats [k,v][
+        ;     print [" ║" pad.right k 30 "║" round.to:2 average map v => scalar "+/-" color #gray to :string round.to: 2 deviation.sample map v => scalar "║" round.to:2 scalar min v ".." round.to:2 scalar max v "->" ]
+        ; ]
+        print ""
+    ]
+
+    calibrate: function [cmd][
+        vals: []
+        progressive\loop.hide.ratioless.label:"Calibrating:" 10 'x [
+            ;processing cmd
+            (x < 10)?[ 
+                pause 50
+                vals: vals ++ scalar benchmark.get [
+                    execute ""
+                ]
+            ][
+                execute cmd
+                0
+            ]
+            
+        ]
+        prints repeat "\b \b" terminal\width
+        return (sum vals)/9
+    ]
+
+    benchmark: method [times][
+        loop \commands 'command [
+            
+            \stats\[command]: []
+            calibrator: \calibrate command
+            ;inspect calibrator
+            bar: progressive\new .keep .label:"Benchmarking:" times!
+            bar\processing: command
+            bar\increase 0
+            loop times 'x [
+                \stats\[command]: \stats\[command] ++ (benchmark.get [
+                    execute command
+                ]); - calibrator
+                if x = times ->
+                    bar\label: command ++ ":"
+                bar\increase 1
+            ]
+            prints repeat "\b" terminal\width
+            prints "\n"
+            ;print ""
+        ]
+
+        \showSummary
+    ]
+]
+
+;---------------------------
+; The main entry point
+;---------------------------
+
+if standalone? [
+    import ./{helpers/cmdline}
+
+    ;inspect args
+
+    cmd: to :cmdline #[
+        information: script
+        options: @[
+            @["r" "run" [:integer] "times" "Specify number of times to run each command" 10]
+        ]
+    ]!
+    export cmd\processing args
+
+    pr: to :peregrino [optValues]!
+
+    ;print [color.bold #magenta " Pelegrino" "v" ++ to :string script\version]
+    print ""
+    print color.bold #orange pad.center "▶ TESTS" terminal\width
+        print ""
+
+    pr\benchmark optRun
+
+]
