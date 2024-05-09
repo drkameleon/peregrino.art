@@ -1,0 +1,167 @@
+;===============================================
+; Peregrino.art
+;
+; Lightning-fast command-line 
+; benchmarking tool & library
+; for Arturo
+;
+; MIT License
+; (c) 2024 Yanis Zafirópulos
+;-----------------------------------------------
+; @file src/helpers/cmdline.art
+;===============================================
+
+define :cmdline [
+    init: method [information :dictionary, options :block][
+        \information: information
+        \options: []
+        \optionsHelp: []
+
+        opts: options ++ @[
+            ø
+            @["h" "help"      [:logical] "" "Show this help screen" false]
+            @["v" "version"   [:logical] "" "Print version" false]
+        ]
+        loop opts 'opt [
+            (opt)?[
+                \options: \options ++ @[opt]
+
+                hint: (opt\2 = [:logical])? 
+                    -> "" 
+                    -> "<" ++ (
+                            (empty? opt\3)? -> replace join.with:", " to [:string] opt\2 {/[\[\]]/} ""
+                                            -> opt\3
+                    ) ++ ">"
+
+                \optionsHelp: \optionsHelp ++ #[
+                    short: opt\0
+                    long: opt\1
+                    types: opt\2
+                    hint: hint
+                    description: opt\4
+                    default: (opt\2 = [:logical])? -> "" -> ~"(Default: |opt\5|)"
+                ]
+            ][
+                \optionsHelp: \optionsHelp ++ ø
+            ]
+        ]
+    ]
+
+    showHelp: method [][
+        tab: "    "
+        print color.bold #green capitalize \information\app
+        print \information\description
+        print ""
+        print color.bold #cyan "Usage:"
+        print tab ++ \information\app ++ " [options] " ++ 
+            (join.with: " " map keys \information\arguments 'k -> "<" ++ k ++ ">") ++ ",..."
+        print ""
+        print color.bold #cyan "Arguments:"
+        loop \information\arguments [command,descr][
+            print tab ++ color #magenta "<" ++ command ++ ">"
+            print tab ++ tab ++ descr
+        ]
+        print ""
+        print color.bold #cyan "Options:"
+        loop \optionsHelp 'entry [
+            if entry [
+                entry\helper: (color #magenta "-" ++ entry\short) ++ 
+                            ", " ++
+                            (color #magenta "--" ++ entry\long) ++
+                            " " ++ entry\hint
+            ]
+        ]
+        maxim: (size tab) + max map \optionsHelp 'entry [
+            (entry)? -> size entry\helper
+                     -> 0
+        ]
+        maxim: maxim + maxim % size tab
+        loop \optionsHelp 'entry [
+            print (entry)? -> tab ++ (pad.right entry\helper maxim) ++ entry\description ++ " " ++ entry\default
+                           -> ""
+        ]
+        print ""
+        exit
+    ]
+
+    showVersion: method [][
+        print [\information\app \information\version]
+        exit
+    ]
+
+    fetchParameter: method [name][
+        loop \options 'opt [
+            if contains? @[opt\0 opt\1] name ->
+                return opt
+        ]
+        if name = "values" -> return ["" "" [:block]]
+        return null
+    ]
+
+    correctType?: method [expected, val][
+        contains? expected\2 type val
+    ]
+
+    unrecognizedParameter: method [which][
+        print color #red "Unrecognized parameter!"
+        print "Unrecognized parameter: " ++ name
+        return false
+    ]
+
+    wrongParameter: method [which, expected, val][
+        print color #red "Wrong parameter!"
+        print ["The passed value for" color.bold #white which "is not correct"]
+        print ["Got:" type value]
+        print ["Expected:" expected\2]
+        return false
+    ]
+
+    validated?: method [arguments][
+        loop arguments [name, value][
+            unless param: <= \fetchParameter name -> 
+                return \unrecognizedParameter name 
+            unless \correctType? param value ->
+                return \wrongParameter name param value
+        ]
+        return true
+    ]
+
+    processing: method [arguments :dictionary][
+        unless \validated? arguments [
+            print "type --help to see more options"
+            exit
+        ]
+
+        exportable: #[]
+        loop \options 'entry [
+            subname: capitalize entry\1
+
+            finalName: "opt" ++ subname
+
+            (key? arguments entry\0)? [
+                exportable\[finalName]: arguments\[entry\0]
+            ][
+                (key? arguments entry\1)? [
+                    exportable\[finalName]: arguments\[entry\1]
+                ][
+                    exportable\[finalName]: entry\5
+                ]
+            ]
+        ]
+        exportable\optValues: arguments\values
+        if and? [key? exportable 'optHelp][exportable\optHelp] -> \showHelp
+        if and? [key? exportable 'optVersion][exportable\optVersion] -> \showVersion
+        ; loop arguments [name, value][
+        ;     subname: capitalize \options\[name]\name
+        ;     if subname = "Help" ->
+        ;         \showHelp
+        ;     if subname = "Version" ->
+        ;         \showVersion
+
+        ;     finalName: "opt" ++ subname
+        ;     exportable\[finalName]: value
+        ; ]
+
+        return exportable
+    ]
+]
