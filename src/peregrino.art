@@ -18,7 +18,9 @@
 ;; ]
 ;==============================================================================
 
-import ./{../../progressive.art/src/progressive.art}!
+import {progressive}!
+
+import ./{helpers/strings}!
 
 define :peregrino [
     init: method [commands][
@@ -26,15 +28,34 @@ define :peregrino [
         \stats: #[]
     ]
 
-    showSummary: method [][
-        print color.bold #orange pad.center "▶ ANALYSIS" terminal\width
+    nicefmt: function [num][
+        to :string .format:".2f" round.to: 2 to :floating num
+    ]
+
+    printInfo: function [][
         print ""
+        print [color.bold #magenta "   Peregrino" ~"v/|script\version|"]
+        print ""
+        print [color.bold #gray pad.right "   System :" 10 color #gray ~"|sys\cpu\arch|/|sys\os|"]
+        print [color.bold #gray pad.right "   CPU    :" 10 color #gray to :string sys\cpu\cores color #gray "cores"]
+    ]
+
+    printHeader: function [title][
+        print ""
+        print color #orange repeat "━" terminal\width
+        print color.bold #orange " • " ++ upper title
+        print ""
+    ]
+
+    showAnalysis: method [][
+        \printHeader "analysis"
         ;print [" " pad.right "Command" 30 "║" pad.center "Average" 15 "║" pad.center "Deviation" 15 "║ Range   ║"]
         ;print " ╔" ++ (repeat "═" 30+2) ++ "╬" ++ (repeat "═" 15+2) ++ "╬" ++ (repeat "═" 15+2) ++ "╬" ++ "══════════════════════╬═════════╬"
-        avgs: map \stats [k,v]-> to :string .format:".2f" round.to:2 average map v => scalar
-        devs: map \stats [k,v]-> to :string .format:".2f" round.to: 2 deviation.sample map v => scalar
-        mins: map \stats [k,v]-> to :string .format:".2f" round.to:2 scalar min v
-        maxs: map \stats [k,v]-> to :string .format:".2f" round.to:2 scalar max v
+        ;scalarVs: map \stats [k,v] -> map v => scalar
+        avgs: map \stats [k,v] -> to :string .format:".2f" round.to:2 average v
+        devs: map \stats [k,v] -> to :string .format:".2f" round.to:2 deviation.sample v
+        mins: map \stats [k,v] -> to :string .format:".2f" round.to:2 min v
+        maxs: map \stats [k,v] -> to :string .format:".2f" round.to:2 max v
 
         maxAvgS: size maximum avgs => size
         maxDevS: size maximum devs => size
@@ -44,84 +65,122 @@ define :peregrino [
         maxAvgS: (maxAvgS > 15)? -> maxAvgS -> 15
         maxDevS: (maxDevS > 15)? -> maxDevS -> 15
 
+        hasOutliers: map.with:'i \stats [k,v] ->
+            positive? enumerate v 'k [
+                tripledev: 3 * to :floating devs\[i]
+                avgf: to :floating avgs\[i]
+                not? between? k (avgf - tripledev) (avgf + tripledev)
+            ]
+
         maxRngS: (20 < maxMinS + maxMaxS)? -> maxMinS + maxMaxS -> 20
 
         commandS: terminal\width - sum @[
             maxAvgS + 2,
+            14 + 3,
             maxDevS + 2,
             maxRngS + 2,
             2 + 2 + 5
         ]
 
-        printLine: function [ONE,TWO,THREE,FOUR][
+        printLine: function [ONE,ONEHALF,TWO,FIVE,THREE,FOUR][
             isInitial?: not? null? attr 'start
             initial: (isInitial?)? -> " " -> "║"
             THIRD: (isInitial?)? -> pad.center THREE maxDevS -> color #gray pad.center THREE maxDevS
-            print [" "++initial pad.right ONE commandS "║" pad.center TWO maxAvgS "║" THIRD "║" pad.center FOUR maxRngS "║"]
+            partONE: pad.right ONE commandS
+            unless empty? ONEHALF [
+                partONE: (pad.right ONE commandS - size ONEHALF) ++ color #gray ONEHALF
+            ]
+            print [" "++initial partONE "║" pad.center TWO maxAvgS "║" pad.center FIVE 14 "║" THIRD "║" pad.center FOUR maxRngS "║"]
         ]
 
-        print "  " ++ (repeat " " commandS+2) ++ "╔" ++ (repeat "═" maxAvgS+2) ++ "╦" ++ (repeat "═" maxDevS+2) ++ "╦" ++ (repeat "═" maxRngS+2) ++ "╗"
-        printLine.start "Command" "Mean" "Deviation" "Range"
-        print " ╔" ++ (repeat "═" commandS+2) ++ "╬" ++ (repeat "═" maxAvgS+2) ++ "╬" ++ (repeat "═" maxDevS+2) ++ "╬" ++ (repeat "═" maxRngS+2) ++ "╣"
+        print "  " ++ (repeat " " commandS+2) ++ "╔" ++ (repeat "═" maxAvgS+2) ++ "╦" ++ (repeat "═" 14+2) ++ "╦" ++ (repeat "═" maxDevS+2) ++ "╦" ++ (repeat "═" maxRngS+2) ++ "╗"
+        printLine.start "Command" "" "Mean" "Comparison" "Deviation" "Range"
+        
+        print " ╔" ++ (repeat "═" commandS+2) ++ "╬" ++ (repeat "═" maxAvgS+2) ++ "╬" ++ (repeat "═" 14+2) ++ "╬" ++ (repeat "═" maxDevS+2) ++ "╬" ++ (repeat "═" maxRngS+2) ++ "╣"
 
+        bestOfTheBest: min map avgs 'aa -> to :floating aa
         loop 0..dec size avgs 'i [
             printLine 
-                \commands\[i] 
+                \commands\[i]
+                (hasOutliers\[i] ? -> "(*)" -> "")
                 avgs\[i] 
+                (bestOfTheBest = to :floating avgs\[i])? -> "--"
+                    -> "+ " ++ (to :string round.to: 2 100 * ((to :floating avgs\[i]) - bestOfTheBest) / bestOfTheBest) ++ "%"
                 "± " ++ devs\[i] 
-                mins\[i] ++ " .. " ++ maxs\[i]
+                mins\[i] ++ ".." ++ maxs\[i]
             ;print [" ║" pad.right get keys \stats i 30 "║" pad.center avgs\[i] 15 "║" color #gray pad.center "± " ++ devs\[i] 15 "║" pad.right mins\[i] maxMinS ".." pad.right maxs\[i] maxMaxS] 
         ]
-        print " ╚" ++ (repeat "═" commandS+2) ++ "╩" ++ (repeat "═" maxAvgS+2) ++ "╩" ++ (repeat "═" maxDevS+2) ++ "╩" ++ (repeat "═" maxRngS+2) ++ "╝"
+        print " ╚" ++ (repeat "═" commandS+2) ++ "╩" ++ (repeat "═" maxAvgS+2) ++ "╩" ++ (repeat "═" 14+2) ++ "╩" ++ (repeat "═" maxDevS+2) ++ "╩" ++ (repeat "═" maxRngS+2) ++ "╝"
         ; loop \stats [k,v][
         ;     print [" ║" pad.right k 30 "║" round.to:2 average map v => scalar "+/-" color #gray to :string round.to: 2 deviation.sample map v => scalar "║" round.to:2 scalar min v ".." round.to:2 scalar max v "->" ]
         ; ]
+        if some? hasOutliers => [&][
+            print color #gray "  (*) " ++ fillEvenly "Detected statistically-significant outliers. You should run this test again after lowering your system load, to minimize any interference." 6
+        ]
         print ""
     ]
 
     calibrate: function [cmd][
-        vals: []
-        progressive\loop.hide.ratioless.label:"Calibrating:" 10 'x [
-            ;processing cmd
+        calvalues: []
+        timeForOne: 0.001
+        progressive\loop .hide .ratioless .label: pad.right "Calibrating:" 20 10 'x [
             (x < 10)?[ 
                 pause 50
-                vals: vals ++ scalar benchmark.get [
-                    execute ""
+                'calvalues ++ scalar benchmark.get [
+                    output: execute ""
                 ]
             ][
-                execute cmd
-                0
+                'calvalues ++ to :floating scalar benchmark.get [
+                    output: execute cmd
+                ]  
             ]
-            
         ]
         prints repeat "\b \b" terminal\width
-        return (sum vals)/9
+        return @[to :floating (sum first.n:9 calvalues)/9, last calvalues]
     ]
 
     benchmark: method [times][
+        \printInfo
+        \printHeader "benchmarks"
+
+        minimumRunningTime: 1000
+
         loop \commands 'command [
             
             \stats\[command]: []
-            calibrator: \calibrate command
-            ;inspect calibrator
-            bar: progressive\new .keep .label:"Benchmarking:" times!
+            [calibrator, timeForOne]: \calibrate command
+
+            if zero? calculatedTimes: <= minimumRunningTime / to :integer timeForOne ->
+                calculatedTimes: 3
+
+            runs: times ?? calculatedTimes
+            
+            bar: progressive\new.keep .label:pad.right "Benchmarking:" 20 runs!
             bar\processing: command
             bar\increase 0
-            loop times 'x [
+            loop runs 'x [
                 \stats\[command]: \stats\[command] ++ (benchmark.get [
-                    execute command
-                ]); - calibrator
-                if x = times ->
-                    bar\label: command ++ ":"
+                    output: execute command
+                ])
+                if x = runs [
+                    estimate: \nicefmt average map \stats\[command] => scalar
+                    bar\message: command
+                    bar\label: (pad.right ~"~ |estimate|/run" 17) ++ pad.right "⏱" 3
+                ]
                 bar\increase 1
             ]
+            \stats\[command]: map \stats\[command] 'v -> to :floating (scalar v) - calibrator
             prints repeat "\b" terminal\width
             prints "\n"
-            ;print ""
         ]
 
-        \showSummary
+        \showAnalysis
     ]
+]
+
+peregrino: function [cmds][
+    p: to :peregrino [cmds]!
+    p\benchmark ø
 ]
 
 ;---------------------------
@@ -131,23 +190,49 @@ define :peregrino [
 if standalone? [
     import ./{helpers/cmdline}
 
-    ;inspect args
+    ; Helper functions
+
+    getCommands: function [][
+        inputs: optValues
+        if optFile [
+            inputs: []
+            loop optValues 'optV [
+                inputs: inputs ++ read.lines optV
+            ]
+        ]
+        
+        (not? empty? optParams)? [
+            d: # to :block optParams
+            dicts: map product.cartesian map couple keys d values d 'coup [
+                (block? last coup)?[
+                    map last coup 'item -> @[first coup, item]
+                ][
+                    @[coup]
+                ]
+            ] 'dic -> dictionary.raw flatten dic
+
+            flatten unique map dicts 'dic [
+                export dic
+                map inputs 'val -> 
+                    render val
+            ]
+        ][
+            inputs
+        ]
+    ]
+
+    ; the main process
 
     cmd: to :cmdline #[
         information: script
         options: @[
-            @["r" "run" [:integer] "times" "Specify number of times to run each command" 10]
+            @["r" "run"    [:integer] "times"  "Specify number of times to run each command" ø]
+            @["f" "file"   [:logical] ""       "Read commands from text file (one per line)" false]
+            @["p" "params" [:string]  "string" "Use custom params in command"                ""]
         ]
     ]!
     export cmd\processing args
 
-    pr: to :peregrino [optValues]!
-
-    ;print [color.bold #magenta " Pelegrino" "v" ++ to :string script\version]
-    print ""
-    print color.bold #orange pad.center "▶ TESTS" terminal\width
-        print ""
-
+    pr: to :peregrino @[getCommands]!
     pr\benchmark optRun
-
 ]

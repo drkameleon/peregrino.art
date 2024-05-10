@@ -1,0 +1,3 @@
+entry: {src/peregrino}
+executable: {src/peregrino}
+requires: [> 0.9.83]

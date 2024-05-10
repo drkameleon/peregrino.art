@@ -39,7 +39,7 @@ define :cmdline [
                     types: opt\2
                     hint: hint
                     description: opt\4
-                    default: (opt\2 = [:logical])? -> "" -> ~"(Default: |opt\5|)"
+                    default: (or? (or? null? opt\5 ""=opt\5) opt\2 = [:logical])? -> "" -> ~"(Default: |opt\5|)"
                 ]
             ][
                 \optionsHelp: \optionsHelp ++ ø
@@ -151,16 +151,6 @@ define :cmdline [
         exportable\optValues: arguments\values
         if and? [key? exportable 'optHelp][exportable\optHelp] -> \showHelp
         if and? [key? exportable 'optVersion][exportable\optVersion] -> \showVersion
-        ; loop arguments [name, value][
-        ;     subname: capitalize \options\[name]\name
-        ;     if subname = "Help" ->
-        ;         \showHelp
-        ;     if subname = "Version" ->
-        ;         \showVersion
-
-        ;     finalName: "opt" ++ subname
-        ;     exportable\[finalName]: value
-        ; ]
 
         return exportable
     ]

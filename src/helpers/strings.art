@@ -1,0 +1,26 @@
+;===============================================
+; Peregrino.art
+;
+; Lightning-fast command-line 
+; benchmarking tool & library
+; for Arturo
+;
+; MIT License
+; (c) 2024 Yanis Zafirópulos
+;-----------------------------------------------
+; @file src/helpers/strings.art
+;===============================================
+
+fillEvenly: function [text,headstart][
+    words: split.words text
+    lines: [[]]
+    loop words 'word [
+        if (2 + headstart) > terminal\width - ((size join.with:" " last lines) + (size word) + 1)[
+            lines: lines ++ @[[]]
+        ]
+        lines\[dec size lines]: lines\[dec size lines] ++ word
+    ]
+    join.with: "\n" ++ repeat " " headstart map lines 'line [
+        join.with: " " line
+    ]
+]
