@@ -220,15 +220,28 @@ define :peregrino [
     ]
 
     showAnalysis: method [][
-        \printHeader "analysis"
+        unless \minimal? ->
+            \printHeader "analysis"
 
         \finalizeData
-        print \getTable
+
+        (\minimal?)?[
+            loop \final 'entry [
+                print " - " ++ ((entry = first \final)? -> \colored #green entry\cmd -> entry\cmd) ++ (entry\outliers? ? -> \colored #gray " (*)" -> "")
+                print "       " ++ "avg: " ++ entry\data\avg ++ (\colored #gray " +/- " ++ entry\data\dev)
+                print "       " ++ "rng: " ++ entry\data\min ++ " .. " ++ entry\data\max
+                print " "
+            ]
+        ][
+            print \getTable
+        ]
 
         if some? \final 'f -> f\outliers? [
-            print \colored #gray "  (*) " ++ fillEvenly "Detected statistically-significant outliers! You could try running this test again after lowering your system load, in order to to minimize any interference to the results." 6
+            print \colored #gray (\minimal? ? -> " (*)" -> "  (*) ") ++ fillEvenly "Detected statistically-significant outliers! You could try running this test again after lowering your system load, in order to to minimize any interference to the results." 6
         ]
-        print ""
+
+        unless \minimal? ->
+            print ""
     ]
 
     idealMsg: function [msgId, msg][
@@ -242,6 +255,7 @@ define :peregrino [
         timeForOne: 0.001
         if \ascii? -> do [.plain]
         if \colorless? -> do [.colorless]
+        if \minimal? -> do [.simple .hide]
         progressive\loop .ratioless .label: pad.right "Calibrating:" 20 10 'x [
             (x < 10)?[ 
                 pause 50
@@ -259,8 +273,10 @@ define :peregrino [
     ]
 
     benchmark: method [times][
-        \printInfo
-        \printHeader "benchmarks"
+        unless \minimal? [
+            \printInfo
+            \printHeader "benchmarks"
+        ]
 
         minimumRunningTime: 3000
 
@@ -276,7 +292,8 @@ define :peregrino [
             
             if \ascii? -> do [.plain]
             if \colorless? -> do [.colorless]
-            bar: progressive\new.keep .label:pad.right "Benchmarking:" 20 runs!
+            (\minimal?)? -> do [.simple .hide] -> do [.keep]
+            bar: progressive\new .label:pad.right "Benchmarking:" 20 runs!
             bar\processing: \idealMsg commandId command
             bar\increase 0
             loop runs 'x [
@@ -292,7 +309,8 @@ define :peregrino [
             ]
             \stats\[command]: map \stats\[command] 'v -> to :floating (scalar v) - calibrator
             prints repeat "\b" terminal\width
-            prints "\n"
+            unless \minimal? ->
+                prints "\n"
         ]
 
         \showAnalysis
