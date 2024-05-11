@@ -7,7 +7,7 @@
 </p>
 
 
-<p align="center"><img width="90%" align="center" src="https://raw.githubusercontent.com/drkameleon/progressive.art/master/progressive.gif"/></p>
+<p align="center"><img width="90%" align="center" src="https://raw.githubusercontent.com/drkameleon/peregrino.art/master/peregrino.gif"/></p>
 
 --- 
  
