@@ -21,6 +21,7 @@
 ;import {progressive}
 import ./{../../progressive.art/src/progressive}
 
+import ./{helpers/misc}
 import ./{helpers/stats}
 import ./{helpers/strings}
 import ./{helpers/styles}!
@@ -145,16 +146,16 @@ define :peregrino [
                         (pad.right replace ~ c\format "(*)" "" c\min + 1 - (row\outliers? ? -> 4 -> 0)) ++
                             (row\outliers? ? -> \colored #gray "(*) " -> "")
                     ][
-                        switch c\header = "Deviation" [
-                            \colored #gray pad.center ~ c\format c\min + 2
-                        ][
-                            switch c\header = "Comparison" [
-                                switch "+ 0.00%" = ~ c\format [
-                                    pad.center "--" c\min + 2
-                                ][
-                                    pad.center ~ c\format c\min + 2
-                                ]
-                            ][
+                        choose c\header [
+                            "Deviation" [
+                                \colored #gray pad.center ~ c\format c\min + 2
+                            ]
+                            "Comparison" [
+                                ("+ 0.00%" = ~ c\format) ?
+                                    -> pad.center "--" c\min + 2
+                                    -> pad.center ~ c\format c\min + 2
+                            ]
+                            else [
                                 pad.center ~ c\format c\min + 2
                             ]
                         ]
