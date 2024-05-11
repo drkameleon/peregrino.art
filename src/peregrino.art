@@ -30,6 +30,8 @@ define :peregrino [
             #[header:"Deviation"    short:"Dev"         format:{± |row\data\dev|}]
             #[header:"Range"        short:"Range"       format:{|row\data\min| .. |row\data\max|}]
         ]
+
+        \final: []
         
         \minimal?: not? null? attr 'minimal
         \ascii?: not? null? attr 'ascii
@@ -112,34 +114,74 @@ define :peregrino [
         ]
     ]
 
-    showAnalysis: method [][
-        \printHeader "analysis"
+    exportToJson: method [target][
+        cleaned: []
+        loop \final 'entry [
+            newEntry: new entry
+            newEntry\data: #.raw flatten map newEntry\data [k,v][
+                @[k, to :floating v] 
+            ]
+            cleaned: cleaned ++ newEntry
+        ]
+        targetFile: target
+        if empty? extract.extension targetFile ->
+            targetFile: targetFile ++ ".json"
 
-        \finalizeData
+        write.pretty.json targetFile cleaned
+    ]
+
+    exportToMarkdown: method [target][
+        oldT: \T
+        oldColorless?: \colorless?
+        \T: _tbl\markdown
+        \colorless?: true
+
+        do [.md]
+        tblMd: \getTable
+
+        \T: oldT
+        \colorless?: oldColorless?
+
+        targetFile: target
+        if empty? extract.extension targetFile ->
+            targetFile: targetFile ++ ".md"
+
+        write targetFile tblMd
+    ]
+
+    getTable: method [][
+        mdMode?: not? null? attr 'md
+
         cols: \getColumns
  
-        ; top line
-        print 
-            "  " ++ (spacer cols\0\min + 2) ++
-            \T\topLeft ++ 
-            (join.with:\T\tTop map drop cols 'c ->
-                repeat \T\horLine c\min + 2) ++
-            \T\topRight
+        tbl: ""
+        unless mdMode? [
+            ; top line
+            tbl: tbl ++ 
+                "  " ++ (spacer cols\0\min + 2) ++
+                \T\topLeft ++ 
+                (join.with:\T\tTop map drop cols 'c ->
+                    repeat \T\horLine c\min + 2) ++
+                \T\topRight
+            tbl: tbl ++ "\n"
+        ]
         
         ; header
-        print "   " ++ (join.with:\T\verLine map.with:'i cols 'c [
+        tbl: tbl ++ "   " ++ (join.with:\T\verLine map.with:'i cols 'c [
                 (i=0)? -> pad.right c\header c\min + 1
                        -> pad.center c\header c\min + 2
             ]) ++ \T\verLine
+        tbl: tbl ++ "\n"
 
         ; sub-header line
-        print " " ++ \T\topLeft ++ (join.with:\T\cross map cols 'c ->
+        tbl: tbl ++ " " ++ \T\topLeft ++ (join.with:\T\cross map cols 'c ->
             repeat \T\horLine c\min + 2) ++
             \T\tRight
+        tbl: tbl ++ "\n"
 
         ; content
         loop.with:'rowId \final 'row [
-            print " " ++ \T\verLine ++ " " ++ (
+            tbl: tbl ++ " " ++ \T\verLine ++ " " ++ (
                 join.with:\T\verLine map.with:'i cols 'c [
                     str: switch i=0 [
                         filename: truncateLeft row\cmd c\min - 8
@@ -164,12 +206,24 @@ define :peregrino [
                                  -> str
                 ]
             ) ++ \T\verLine
+            tbl: tbl ++ "\n"
         ]
 
-        ; bottom line
-        print " " ++ \T\bottomLeft ++ (join.with:\T\tBottom map cols 'c ->
-            repeat \T\horLine c\min + 2) ++
-            \T\bottomRight
+        unless mdMode? [
+            ; bottom line
+            tbl: tbl ++ " " ++ \T\bottomLeft ++ (join.with:\T\tBottom map cols 'c ->
+                repeat \T\horLine c\min + 2) ++
+                \T\bottomRight
+        ]
+
+        return tbl
+    ]
+
+    showAnalysis: method [][
+        \printHeader "analysis"
+
+        \finalizeData
+        print \getTable
 
         if some? \final 'f -> f\outliers? [
             print \colored #gray "  (*) " ++ fillEvenly "Detected statistically-significant outliers! You could try running this test again after lowering your system load, in order to to minimize any interference to the results." 6
@@ -188,7 +242,7 @@ define :peregrino [
         timeForOne: 0.001
         if \ascii? -> do [.plain]
         if \colorless? -> do [.colorless]
-        progressive\loop .hide .ratioless .label: pad.right "Calibrating:" 20 10 'x [
+        progressive\loop .ratioless .label: pad.right "Calibrating:" 20 10 'x [
             (x < 10)?[ 
                 pause 50
                 'calvalues ++ scalar benchmark.get [
@@ -208,7 +262,7 @@ define :peregrino [
         \printInfo
         \printHeader "benchmarks"
 
-        minimumRunningTime: 1000
+        minimumRunningTime: 3000
 
         loop.with:'commandId \commands 'command [
             

@@ -22,6 +22,11 @@ _tbl: #[
         horLine: "-"  verLine: "|"      cross: "+"
           tLeft: "+"   tRight: "+"       tTop: "+"     tBottom: "+"
     ]
+    markdown: #[
+        topLeft: "|" topRight: "|" bottomLeft: "|" bottomRight: "|"
+        horLine: "-"  verLine: "|"      cross: "|"
+          tLeft: "|"   tRight: "|"       tTop: "|"     tBottom: "|"
+    ]
 ]
 
 _elements: #[

@@ -16,6 +16,7 @@ define :cmdline [
         \information: information
         \options: []
         \optionsHelp: []
+        \tab: "    "
 
         opts: options ++ @[
             ø
@@ -47,19 +48,23 @@ define :cmdline [
         ]
     ]
 
+    showUsage: method [][
+        tabbed?: not? null? attr 'isError
+        print (tabbed? ? -> "  " -> "") ++ color.bold #cyan "Usage:"
+        print (tabbed? ? -> "  " -> "") ++ \tab ++ \information\app ++ " [options] " ++ 
+            (join.with: " " map keys \information\arguments 'k -> "<" ++ k ++ ">") ++ ",..."
+    ]
+
     showHelp: method [][
-        tab: "    "
         print color.bold #green capitalize \information\app
         print \information\description
         print ""
-        print color.bold #cyan "Usage:"
-        print tab ++ \information\app ++ " [options] " ++ 
-            (join.with: " " map keys \information\arguments 'k -> "<" ++ k ++ ">") ++ ",..."
+        \showUsage
         print ""
         print color.bold #cyan "Arguments:"
         loop \information\arguments [command,descr][
-            print tab ++ color #magenta "<" ++ command ++ ">"
-            print tab ++ tab ++ descr
+            print \tab ++ color #magenta "<" ++ command ++ ">"
+            print \tab ++ \tab ++ descr
         ]
         print ""
         print color.bold #cyan "Options:"
@@ -70,13 +75,13 @@ define :cmdline [
                             " " ++ entry\hint
             ]
         ]
-        maxim: (size tab) + max map \optionsHelp 'entry [
+        maxim: (size \tab) + max map \optionsHelp 'entry [
             (entry)? -> size entry\helper
                      -> 0
         ]
-        maxim: maxim + maxim % size tab
+        maxim: maxim + maxim % size \tab
         loop \optionsHelp 'entry [
-            print (entry)? -> tab ++ (pad.right entry\helper maxim) ++ entry\description ++ " " ++ entry\default
+            print (entry)? -> \tab ++ (pad.right entry\helper maxim) ++ entry\description ++ " " ++ entry\default
                            -> ""
         ]
         print ""
@@ -101,35 +106,36 @@ define :cmdline [
         contains? expected\2 type val
     ]
 
+    showError: method [msg][
+        print ""
+        print [color #red "!" msg "\n"]
+        do [.isError]
+        \showUsage
+        print ""
+        print "  Use `--help` to see more options"
+        print ""
+        exit
+    ]
+
     unrecognizedParameter: method [which][
-        print color #red "Unrecognized parameter!"
-        print "Unrecognized parameter: " ++ name
-        return false
+        \showError "Unrecognized parameter: " ++ (color.bold #white name)
     ]
 
     wrongParameter: method [which, expected, val][
-        print color #red "Wrong parameter!"
-        print ["The passed value for" color.bold #white which "is not correct"]
-        print ["Got:" type value]
-        print ["Expected:" expected\2]
-        return false
+        \showError "Wrong parameter: " ++ (color.bold #white to :string val) ++ " for: " ++ (color.bold #white which) ++ "\n  " ++ "Expected: " ++ join.with:", " to [:string] expected\2
     ]
 
-    validated?: method [arguments][
+    validate: method [arguments][
         loop arguments [name, value][
             unless param: <= \fetchParameter name -> 
-                return \unrecognizedParameter name 
+                \unrecognizedParameter name 
             unless \correctType? param value ->
-                return \wrongParameter name param value
+                \wrongParameter name param value
         ]
-        return true
     ]
 
     processing: method [arguments :dictionary][
-        unless \validated? arguments [
-            print "type --help to see more options"
-            exit
-        ]
+        \validate arguments 
 
         exportable: #[]
         loop \options 'entry [

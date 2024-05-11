@@ -79,5 +79,14 @@ if optAscii -> do [.ascii]
 if optColorless -> do [.colorless]
 if optMinimal -> do [.minimal]
 
+if empty? optValues ->
+    cmd\showError "Not enough arguments"
+
 pr: to :peregrino @[getCommands]!
 pr\benchmark optRun
+
+unless empty? optJson ->
+    pr\exportToJson optJson
+
+unless empty? optMarkdown ->
+    pr\exportToMarkdown optMarkdown
