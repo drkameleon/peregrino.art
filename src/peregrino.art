@@ -10,13 +10,6 @@
 ;-----------------------------------------------
 ; @file src/peregrino.art
 ;===============================================
-;; app:         « peregrino
-;; version:     « 0.0.1
-;; description: « Lightning-fast command-line benchmarking tool & library
-;; arguments: [
-;;     command: « A command you want to benchmark
-;; ]
-;==============================================================================
 
 ;import {progressive}
 import ./{../../progressive.art/src/progressive}
@@ -31,12 +24,14 @@ define :peregrino [
         \commands: commands
         \stats: #[]
         \columns: @[
-            #[header:"Command"      short:"Command"     format:{|row\cmd| (*)}]
+            #[header:"Command"      short:"Command"     format:{|filename| (*)}]
             #[header:"Average"      short:"Avg"         format:{|row\data\avg|}]
             #[header:"Comparison"   short:"Cmp"         format:{+ |row\data\rel|%}]
             #[header:"Deviation"    short:"Dev"         format:{± |row\data\dev|}]
             #[header:"Range"        short:"Range"       format:{|row\data\min| .. |row\data\max|}]
         ]
+        
+        \minimal?: not? null? attr 'minimal
         \ascii?: not? null? attr 'ascii
         \colorless?: not? null? attr 'colorless
 
@@ -123,6 +118,7 @@ define :peregrino [
         \finalizeData
         cols: \getColumns
  
+        ; top line
         print 
             "  " ++ (spacer cols\0\min + 2) ++
             \T\topLeft ++ 
@@ -130,19 +126,23 @@ define :peregrino [
                 repeat \T\horLine c\min + 2) ++
             \T\topRight
         
+        ; header
         print "   " ++ (join.with:\T\verLine map.with:'i cols 'c [
                 (i=0)? -> pad.right c\header c\min + 1
                        -> pad.center c\header c\min + 2
             ]) ++ \T\verLine
 
+        ; sub-header line
         print " " ++ \T\topLeft ++ (join.with:\T\cross map cols 'c ->
             repeat \T\horLine c\min + 2) ++
             \T\tRight
 
+        ; content
         loop.with:'rowId \final 'row [
             print " " ++ \T\verLine ++ " " ++ (
                 join.with:\T\verLine map.with:'i cols 'c [
                     str: switch i=0 [
+                        filename: truncateLeft row\cmd c\min - 8
                         (pad.right replace ~ c\format "(*)" "" c\min + 1 - (row\outliers? ? -> 4 -> 0)) ++
                             (row\outliers? ? -> \colored #gray "(*) " -> "")
                     ][
@@ -166,6 +166,7 @@ define :peregrino [
             ) ++ \T\verLine
         ]
 
+        ; bottom line
         print " " ++ \T\bottomLeft ++ (join.with:\T\tBottom map cols 'c ->
             repeat \T\horLine c\min + 2) ++
             \T\bottomRight
@@ -174,6 +175,12 @@ define :peregrino [
             print \colored #gray "  (*) " ++ fillEvenly "Detected statistically-significant outliers! You could try running this test again after lowering your system load, in order to to minimize any interference to the results." 6
         ]
         print ""
+    ]
+
+    idealMsg: function [msgId, msg][
+        if terminal\width < 80 -> return ~"#|msgId|"
+        if terminal\width < 120 -> return truncateLeft msg terminal\width / 3
+        return truncateLeft msg terminal\width / 2
     ]
 
     calibrate: function [cmd][
@@ -203,7 +210,7 @@ define :peregrino [
 
         minimumRunningTime: 1000
 
-        loop \commands 'command [
+        loop.with:'commandId \commands 'command [
             
             \stats\[command]: []
             [calibrator, timeForOne]: \calibrate command
@@ -216,15 +223,15 @@ define :peregrino [
             if \ascii? -> do [.plain]
             if \colorless? -> do [.colorless]
             bar: progressive\new.keep .label:pad.right "Benchmarking:" 20 runs!
-            bar\processing: command
+            bar\processing: \idealMsg commandId command
             bar\increase 0
             loop runs 'x [
                 \stats\[command]: \stats\[command] ++ (benchmark.get [
                     output: execute command
                 ])
                 if x = runs [
-                    estimate: nicefloat average map \stats\[command] => scalar
-                    bar\message: command
+                    estimate: nicefloat (average map \stats\[command] => scalar) - calibrator
+                    bar\message: \idealMsg commandId command
                     bar\label: (pad.right ~"~ |estimate|/run" 17) ++ pad.right \E\timer 3
                 ]
                 bar\increase 1
@@ -241,64 +248,4 @@ define :peregrino [
 peregrino: function [cmds][
     p: to :peregrino [cmds]!
     p\benchmark ø
-]
-
-;---------------------------
-; The main entry point
-;---------------------------
-
-if standalone? [
-    import ./{helpers/cmdline}
-
-    ; Helper functions
-
-    getCommands: function [][
-        inputs: optValues
-        if optFile [
-            inputs: []
-            loop optValues 'optV [
-                inputs: inputs ++ read.lines optV
-            ]
-        ]
-        
-        (not? empty? optParams)? [
-            d: # to :block optParams
-            dicts: map product.cartesian map couple keys d values d 'coup [
-                (block? last coup)?[
-                    map last coup 'item -> @[first coup, item]
-                ][
-                    @[coup]
-                ]
-            ] 'dic -> dictionary.raw flatten dic
-
-            flatten unique map dicts 'dic [
-                export dic
-                map inputs 'val -> 
-                    render val
-            ]
-        ][
-            inputs
-        ]
-    ]
-
-    ; the main process
-
-    cmd: to :cmdline #[
-        information: script
-        options: @[
-            @["r" "run"         [:integer] "times"  "Specify number of times to run each command"   ø]
-            @["f" "file"        [:logical] ""       "Read commands from text file (one per line)"   false]
-            @["p" "params"      [:string]  "string" "Use custom params in command"                  ""]
-            ø
-            @["a" "ascii"       [:logical] ""       "Use simple style, with ASCII-only characters"  false]
-            @["c" "colorless"   [:logical] ""       "Don't use colored output"                      false]
-        ]
-    ]!
-    export cmd\processing args
-
-    if optAscii -> do [.ascii]
-    if optColorless -> do [.colorless]
-
-    pr: to :peregrino @[getCommands]!
-    pr\benchmark optRun
 ]

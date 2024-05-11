@@ -65,8 +65,7 @@ define :cmdline [
         print color.bold #cyan "Options:"
         loop \optionsHelp 'entry [
             if entry [
-                entry\helper: (color #magenta "-" ++ entry\short) ++ 
-                            ", " ++
+                entry\helper: ((empty? entry\short) ? -> color #magenta "    " -> (color #magenta "-" ++ entry\short) ++ ", ") ++ 
                             (color #magenta "--" ++ entry\long) ++
                             " " ++ entry\hint
             ]
