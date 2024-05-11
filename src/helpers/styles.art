@@ -1,0 +1,34 @@
+;===============================================
+; Peregrino.art
+;
+; Lightning-fast command-line 
+; benchmarking tool & library
+; for Arturo
+;
+; MIT License
+; (c) 2024 Yanis Zafirópulos
+;-----------------------------------------------
+; @file src/helpers/tables.art
+;===============================================
+
+_tbl: #[
+    normal: #[
+        topLeft: "╔" topRight: "╗" bottomLeft: "╚" bottomRight: "╝"
+        horLine: "═"  verLine: "║"      cross: "╬"
+          tLeft: "╠"   tRight: "╣"       tTop: "╦"     tBottom: "╩"
+    ]
+    ascii: #[
+        topLeft: "+" topRight: "+" bottomLeft: "+" bottomRight: "+"
+        horLine: "-"  verLine: "|"      cross: "+"
+          tLeft: "+"   tRight: "+"       tTop: "+"     tBottom: "+"
+    ]
+]
+
+_elements: #[
+    normal: #[
+        dot: "•"    horLine: "━"    timer: "⏱"
+    ]
+    ascii: #[
+        dot: ">"    horLine: "="    timer: " "
+    ]
+]

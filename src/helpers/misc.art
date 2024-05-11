@@ -1,0 +1,22 @@
+;===============================================
+; Peregrino.art
+;
+; Lightning-fast command-line 
+; benchmarking tool & library
+; for Arturo
+;
+; MIT License
+; (c) 2024 Yanis Zafirópulos
+;-----------------------------------------------
+; @file src/helpers/misc.art
+;===============================================
+
+choose: function [what,cases][
+    else: what
+    loop @ cases [condition,action][
+        if what = condition [
+            do action
+            break
+        ]
+    ]
+]

@@ -24,3 +24,17 @@ fillEvenly: function [text,headstart][
         join.with: " " line
     ]
 ]
+
+nicefloat: function [num][
+    to :string .format:".2f" round.to: 2 to :floating num
+]
+
+truncateLeft: function [str,lim][
+    if lim >= size str -> return str
+    pref: "..."
+    return pref ++ last.n: min @[lim - size pref, (size str) - size pref] str
+]
+
+spacer: function [len][
+    repeat " " len
+]

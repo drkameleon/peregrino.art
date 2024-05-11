@@ -1,0 +1,34 @@
+;===============================================
+; Peregrino.art
+;
+; Lightning-fast command-line 
+; benchmarking tool & library
+; for Arturo
+;
+; MIT License
+; (c) 2024 Yanis Zafirópulos
+;-----------------------------------------------
+; @file src/helpers/stats.art
+;===============================================
+
+hasOutliers?: function [smpl, avg, dev][
+    tripledev: 3 * dev
+
+    positive? enumerate smpl 'sv [
+        not? between? sv (avg - tripledev) (avg + tripledev)
+    ]
+]
+
+getStats: function [smpl][
+    avg: average smpl
+    dev: deviation.sample smpl
+    return #[
+        data: #[
+            avg: avg
+            dev: dev
+            min: min smpl
+            max: max smpl
+        ]
+        outliers?: hasOutliers? smpl avg dev 
+    ]
+]
