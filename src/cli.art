@@ -1,0 +1,83 @@
+;===============================================
+; Peregrino.art
+;
+; Lightning-fast command-line 
+; benchmarking tool & library
+; for Arturo
+;
+; MIT License
+; (c) 2024 Yanis Zafirópulos
+;-----------------------------------------------
+; @file src/cli.art
+;===============================================
+;; app:         « peregrino
+;; version:     « 0.0.1
+;; description: « Lightning-fast command-line benchmarking tool & library
+;; arguments: [
+;;     command: « One or more commands you want to benchmark
+;; ]
+;==============================================================================
+
+import ./{peregrino}
+import ./{helpers/cmdline}
+
+;---------------------------
+; Helpers
+;---------------------------
+
+getCommands: function [][
+    inputs: optValues
+    if optFile [
+        inputs: []
+        loop optValues 'optV [
+            inputs: inputs ++ read.lines optV
+        ]
+    ]
+    
+    (not? empty? optParams)? [
+        d: # to :block optParams
+        dicts: map product.cartesian map couple keys d values d 'coup [
+            (block? last coup)?[
+                map last coup 'item -> @[first coup, item]
+            ][
+                @[coup]
+            ]
+        ] 'dic -> dictionary.raw flatten dic
+
+        flatten unique map dicts 'dic [
+            export dic
+            map inputs 'val -> 
+                render val
+        ]
+    ][
+        inputs
+    ]
+]
+
+;---------------------------
+; The main entry point
+;---------------------------
+
+cmd: to :cmdline #[
+    information: script
+    options: @[
+        @["r" "run"         [:integer] "times"      "Specify number of times to run each command"   ø]
+        @["f" "file"        [:logical] ""           "Read commands from text file (one per line)"   false]
+        @["p" "params"      [:string]  "string"     "Use custom params in command"                  ""]
+        ø
+        @["m" "minimal"     [:logical] ""           "No fancy output; just the data!"               false]
+        @["a" "ascii"       [:logical] ""           "Use simple style, with ASCII-only characters"  false]
+        @["c" "colorless"   [:logical] ""           "Don't use colored output"                      false]
+        ø
+        @[""  "markdown"    [:string]  "file"       "Export Markdown to given file"                 ""]
+        @[""  "json"        [:string]  "file"       "Export Json to give file"                      ""]
+    ]
+]!
+export cmd\processing args
+
+if optAscii -> do [.ascii]
+if optColorless -> do [.colorless]
+if optMinimal -> do [.minimal]
+
+pr: to :peregrino @[getCommands]!
+pr\benchmark optRun
