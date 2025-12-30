@@ -187,7 +187,7 @@ define :peregrino [
                         (pad.right replace ~ c\format "(*)" "" c\min + 1 - (row\outliers? ? -> 4 -> 0)) ++
                             (row\outliers? ? -> \colored #gray "(*) " -> "")
                     ][
-                        choose c\header [
+                        case c\header [
                             "Deviation" [
                                 \colored #gray pad.center ~ c\format c\min + 2
                             ]
@@ -196,7 +196,7 @@ define :peregrino [
                                     -> pad.center "--" c\min + 2
                                     -> pad.center ~ c\format c\min + 2
                             ]
-                            else [
+                            any [
                                 pad.center ~ c\format c\min + 2
                             ]
                         ]
