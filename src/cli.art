@@ -10,16 +10,21 @@
 ;-----------------------------------------------
 ; @file src/cli.art
 ;===============================================
-;; app:         « peregrino
-;; version:     « 0.0.3
-;; description: « Lightning-fast command-line benchmarking tool & library
-;; arguments: [
-;;     command: « One or more commands you want to benchmark
-;; ]
-;==============================================================================
 
 import ./{peregrino}
 import ./{helpers/cmdline}
+
+;---------------------------
+; Script info
+;---------------------------
+
+script: #[
+    app:         « peregrino
+    version:     « 0.0.3
+    description: « Lightning-fast command-line benchmarking tool & library
+    arguments: ::
+        command: « One or more commands you want to benchmark
+]
 
 ;---------------------------
 ; Helpers
