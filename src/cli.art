@@ -11,13 +11,6 @@
 ; @file src/cli.art
 ;===============================================
 
-import ./{peregrino}
-import ./{helpers/cmdline}
-
-;---------------------------
-; Script info
-;---------------------------
-
 script: #[
     app:         « peregrino
     version:     « 0.0.3
@@ -25,6 +18,13 @@ script: #[
     arguments: ::
         command: « One or more commands you want to benchmark
 ]
+
+;---------------------------
+; Imports
+;---------------------------
+
+import ./{peregrino}
+import ./{helpers/cmdline}
 
 ;---------------------------
 ; Helpers
