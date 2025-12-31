@@ -13,7 +13,6 @@
 
 import {progressive}
 
-import ./{helpers/misc}
 import ./{helpers/stats}
 import ./{helpers/strings}
 import ./{helpers/styles}!
